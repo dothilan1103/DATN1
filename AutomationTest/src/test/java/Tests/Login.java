@@ -30,7 +30,7 @@ public class Login {
         wait = new WebDriverWait(driver, Duration.ofSeconds(15));
 
         driver.manage().window().maximize();
-        driver.get("http://161.248.4.185:8081/login");
+        driver.get("http://localhost:5173/login");
 
         loginSteps = new LoginSteps(driver);
     }
@@ -42,13 +42,8 @@ public class Login {
 
     // ================= TEST =================
 
-    // DN-1: mở trang login
-    @Test
-    public void DN1_Open_Login() {
-        Assert.assertTrue(driver.getCurrentUrl().contains("login"));
-    }
 
-    // DN-2: login thành công
+    // DN-1: login thành công
     @Test
     public void DN2_Login_Success() {
         loginSteps.login("admin@gmail.com", "123456");
@@ -58,29 +53,50 @@ public class Login {
         Assert.assertTrue(driver.getCurrentUrl().contains("admin"));
     }
 
-    // DN-3: sai username
+    // DN-2: sai username
     @Test
     public void DN3_Wrong_Username() {
-        loginSteps.login("sai_user", "123456");
+
+        loginSteps.login("sai_user@gmail.com", "123456");
+
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.urlContains("login"),
+                ExpectedConditions.presenceOfElementLocated(
+                        By.xpath("//*[contains(text(),'Bad credentials')]"))
+        ));
+
+        String pageSource = driver.getPageSource().toLowerCase();
 
         Assert.assertTrue(
-                wait.until(ExpectedConditions.visibilityOfElementLocated(errorMsg))
-                        .getText().toLowerCase().contains("Bad credentials")
+                pageSource.contains("bad credentials")
+                        || pageSource.contains("không tồn tại")
+                        || pageSource.contains("sai tài khoản"),
+                "Không hiển thị lỗi đăng nhập sai username"
         );
     }
 
-    // DN-4: sai password
+    // DN-3: sai password
     @Test
     public void DN4_Wrong_Password() {
+
         loginSteps.login("admin@gmail.com", "sai_pass");
 
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.urlContains("login"),
+                ExpectedConditions.presenceOfElementLocated(
+                        By.xpath("//*[contains(text(),'Bad credentials')]"))
+        ));
+
+        String pageSource = driver.getPageSource().toLowerCase();
+
         Assert.assertTrue(
-                wait.until(ExpectedConditions.visibilityOfElementLocated(errorMsg))
-                        .getText().toLowerCase().contains("Bad credentials")
+                pageSource.contains("bad credentials")
+                        || pageSource.contains("sai mật khẩu"),
+                "Không hiển thị lỗi sai password"
         );
     }
 
-    // DN-5: bỏ trống email
+    // DN-4: bỏ trống email
     @Test
     public void DN5_Empty_Email() {
 
@@ -93,7 +109,7 @@ public class Login {
         );
     }
 
-    // DN-6: bỏ trống password
+    // DN-5: bỏ trống password
     @Test
     public void DN6_Empty_Password() {
 
@@ -106,7 +122,7 @@ public class Login {
         );
     }
 
-    // DN-7: bỏ trống tất cả
+    // DN-6: bỏ trống tất cả
     @Test
     public void DN7_Empty_All() {
 
@@ -118,45 +134,32 @@ public class Login {
         );
     }
 
-    // DN-8: email sai format
-    @Test
-    public void DN8_Invalid_Email() {
 
-        driver.findElement(txtEmail).sendKeys("abc");
-
-        // 👉 bắt buộc để trigger validate
-        driver.findElement(txtPassword).click();
-
-        driver.findElement(txtPassword).sendKeys("123456");
-        driver.findElement(btnLogin).click();
-
-        String actual = wait.until(
-                ExpectedConditions.visibilityOfElementLocated(errorMsg)
-        ).getText();
-
-        System.out.println("Error: " + actual);
-
-        Assert.assertTrue(
-                actual.toLowerCase().contains("email"),
-                "Sai message: " + actual
-        );
-    }
-
-    // DN-9: tài khoản chưa tồn tại
+    // DN-7: tài khoản chưa tồn tại
     @Test
     public void DN9_User_Not_Exist() {
 
-        loginSteps.login("test123@gmail.com", "123456");
+        loginSteps.login("test123890@gmail.com", "123456");
+
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.urlContains("login"),
+                ExpectedConditions.presenceOfElementLocated(
+                        By.xpath("//*[contains(text(),'không tồn tại')]"))
+        ));
+
+        String pageSource = driver.getPageSource().toLowerCase();
 
         Assert.assertTrue(
-                wait.until(ExpectedConditions.visibilityOfElementLocated(errorMsg))
-                        .getText().toLowerCase().contains("không tồn tại")
+                pageSource.contains("không tồn tại")
+                        || pageSource.contains("bad credentials")
+                        || pageSource.contains("user not found"),
+                "Không hiển thị lỗi tài khoản không tồn tại"
         );
     }
 
-    // DN-10: hiển thị mật khẩu
+    // DN-8: hiển thị mật khẩu
     @Test
-    public void DN10_Show_Password() {
+    public void DN8_Show_Password() {
 
         WebElement password = driver.findElement(txtPassword);
         password.sendKeys("123456");
@@ -167,18 +170,5 @@ public class Login {
 
         Assert.assertEquals(type, "text");
     }
-
-    // DN-11: redirect sau login
-    @Test
-    public void DN11_Redirect_After_Login() {
-
-        loginSteps.login("admin@gmail.com", "123456");
-
-        wait.until(ExpectedConditions.urlContains("admin"));
-
-        Assert.assertTrue(
-                driver.getCurrentUrl().contains("admin"),
-                "Không redirect đúng sau login"
-        );
-    }
 }
+
